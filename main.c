@@ -50,7 +50,6 @@ void tokenize(char ch)
               tokens[tokenCursor].type = TOKEN_STRING;
               tokenBufCursor = 0;
               tokenCursor++;
-              return;
           }
           else if(isalpha(ch))
           {
@@ -64,7 +63,6 @@ void tokenize(char ch)
               tokens[tokenCursor].type = TOKEN_KEYWORD;
               tokenBufCursor = 0;
               tokenCursor++;
-              return;
           }
           switch(buf[_index])
           {
