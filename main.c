@@ -3,9 +3,12 @@
 #include <string.h>
 
 FILE *file;
+FILE *outFile;
 int bytes;
 char buf[1024000];
 int _index = 0;
+
+char out[1024000];
 
 typedef enum
 {
@@ -29,6 +32,7 @@ void tokenize(char ch)
 {
     char tokenBuf[1024];
     int tokenBufCursor = 0;
+    memset(tokenBuf, 0, strlen(tokenBuf));
 
         if(ch == '\n' || ch == '\n' || ch == ' ')
       {
@@ -42,7 +46,6 @@ void tokenize(char ch)
               _index++;
               for(tokenBufCursor = 0; '"' != buf[_index]; _index++)
               {
-                  //printf("%s\n", tokenBuf);
                   tokenBuf[tokenBufCursor] = buf[_index];
                   tokenBufCursor++;
               }
@@ -85,6 +88,52 @@ void tokenize(char ch)
       }
 }
 
+void str_builder(char* src, char* dst)
+{
+    int _i;
+    char temp[1024];
+    temp[0] = 34;
+    for(_i = 1; '\0' != temp[_i]; _i++)
+    {
+        temp[_i] = src[_i - 1];
+    }
+    temp[_i] = 34;
+    temp[_i + 1] = '\0';
+    printf("Result: %s\n", temp);
+    strcat(dst, temp);
+}
+
+void process()
+{
+    outFile = fopen("out.c", "w");
+    strcat(out,"#include <stdio.h>\nint main(){");
+
+    for(int i = 0; i < tokenCursor; i++)
+    {
+        printf("Index: %d\n", i);
+        switch(tokens[i].type)
+        {
+            case TOKEN_KEYWORD:
+                strcat(out, "printf");
+                break;
+            case TOKEN_OPARAN:
+                strcat(out, "(");
+                break;
+            case TOKEN_CPARAN:
+                strcat(out, ")");
+                break;
+            case TOKEN_STRING:
+                str_builder(tokens[i].value, out);
+                break;
+            case TOKEN_SEMICOLON:
+                strcat(out, ";");
+                break;
+        }
+    }
+    strcat(out," return 0;}");
+    fprintf(outFile, "%s\n", out);
+}
+
 int main(int argc, char const *argv[])
 {
     //if (argc < 2){printf("Deposit a file to compile!\n"); return 1;}
@@ -110,6 +159,8 @@ int main(int argc, char const *argv[])
     {
         printf("Tokens: %s\n", tokens[l].value);
     }
+    printf("%d\n", tokenCursor);
+    process();
 
     return 0;
 }
