@@ -1,3 +1,10 @@
 # This is a comment line
-print("Hello Poland!");
-print("50Cent *-");
+
+chaa identifier;
+chaa text;
+
+identifier = "Seri Ola Sir Senor!";
+text = "This is my program!";
+
+print(text);
+print(identifier);

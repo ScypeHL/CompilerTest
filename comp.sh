@@ -1,3 +1,3 @@
-!#/bin/sh
+#!/bin/sh
 
-gcc -std=c11 -Wall main.c -o run
+gcc -std=c11 -Wall main.c string.c -o run -g

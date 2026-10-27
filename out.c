@@ -1,2 +1,8 @@
 #include <stdio.h>
-int main(){printf("Hello");printf("50Cent"); return 0;}
+int main(){char* identifier;
+char* text;
+identifier="Seri Ola Sir Senor!";
+text="This is my program!";
+puts(text);
+puts(identifier);
+ return 0;}

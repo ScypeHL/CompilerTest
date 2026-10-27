@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
+#include "header.h"
 
 FILE *file;
 FILE *outFile;
@@ -10,13 +8,19 @@ int _index = 0;
 
 char out[1024000];
 
+#define KEYWORD_COUNT 2
+char* keywords[KEYWORD_COUNT];
+
 typedef enum
 {
+    TOKEN_ID = -1,
+    TOKEN_TYPE_CHAA,
+    TOKEN_PRINT,
     TOKEN_OPARAN,
     TOKEN_CPARAN,
     TOKEN_STRING,
-    TOKEN_KEYWORD,
-    TOKEN_SEMICOLON
+    TOKEN_SEMICOLON,
+    TOKEN_EQUALS
 }Token_Type;
 
 typedef struct
@@ -32,7 +36,7 @@ void tokenize(char ch)
 {
     char tokenBuf[1024];
     int tokenBufCursor = 0;
-    memset(tokenBuf, 0, strlen(tokenBuf));
+    memset(tokenBuf, 0, (strlen(tokenBuf) + 1) * sizeof(char));
 
         if(ch == '\n' || ch == '\n' || ch == ' ')
       {
@@ -43,27 +47,44 @@ void tokenize(char ch)
           if(ch == '#'){for(;buf[_index] !='\n'; _index++){}}
           if(ch == '"')
           {
+              tokenBuf[tokenBufCursor] = 34;
+              tokenBufCursor++;
               _index++;
-              for(tokenBufCursor = 0; '"' != buf[_index]; _index++)
+              for(; '"' != buf[_index]; _index++)
               {
                   tokenBuf[tokenBufCursor] = buf[_index];
+                  printf("Characters %c\n", buf[_index]);
                   tokenBufCursor++;
               }
-              strcpy(tokens[tokenCursor].value, tokenBuf);
+              tokenBuf[tokenBufCursor] = 34;
+              tokenBufCursor++;
+              //strcpy(tokens[tokenCursor].value, tokenBuf);
+              printf("Length: %d\n", tokenBufCursor);
+              memcpy(tokens[tokenCursor].value, tokenBuf, sizeof(char) * (tokenBufCursor));
               tokens[tokenCursor].type = TOKEN_STRING;
               tokenBufCursor = 0;
               tokenCursor++;
           }
           else if(isalpha(ch))
           {
-              for(tokenBufCursor = 0; 0 != isalnum(buf[_index]); _index++)
+              for(tokenBufCursor = 0; 0 != isalpha(buf[_index]); _index++)
               {
                   tokenBuf[tokenBufCursor] = buf[_index];
                   tokenBufCursor++;
               }
               //tokenBuf[tokenBufCursor + 1] = '\0';
-              strcpy(tokens[tokenCursor].value, tokenBuf);
-              tokens[tokenCursor].type = TOKEN_KEYWORD;
+              int i;
+              for(i = 0; i < KEYWORD_COUNT; i++)
+              {
+                  if(!strcmp(keywords[i], tokenBuf))
+                  {
+                    tokens[tokenCursor].type = i;
+                    break;
+                  }else{tokens[tokenCursor].type = TOKEN_ID;}
+              }
+              printf("Length: %d\n", tokenBufCursor);
+              memcpy(tokens[tokenCursor].value, tokenBuf, sizeof(char) * (tokenBufCursor));
+              //strcpy(tokens[tokenCursor].value, tokenBuf);
               tokenBufCursor = 0;
               tokenCursor++;
           }
@@ -84,6 +105,11 @@ void tokenize(char ch)
                   tokens[tokenCursor].type = TOKEN_SEMICOLON;
                   tokenCursor++;
                   break;
+              case '=':
+                  strcpy(tokens[tokenCursor].value, "=");
+                  tokens[tokenCursor].type = TOKEN_EQUALS;
+                  tokenCursor++;
+                  break;
           }
       }
 }
@@ -91,15 +117,16 @@ void tokenize(char ch)
 void str_builder(char* src, char* dst)
 {
     int _i;
-    char temp[1024];
+    size_t size;
+    size = strlen(src);
+    char temp[size + 1];
     temp[0] = 34;
-    for(_i = 1; '\0' != temp[_i]; _i++)
+    for(_i = 1; temp[_i] != 0; _i++)
     {
         temp[_i] = src[_i - 1];
     }
     temp[_i] = 34;
     temp[_i + 1] = '\0';
-    printf("Result: %s\n", temp);
     strcat(dst, temp);
 }
 
@@ -110,11 +137,20 @@ void process()
 
     for(int i = 0; i < tokenCursor; i++)
     {
-        printf("Index: %d\n", i);
         switch(tokens[i].type)
         {
-            case TOKEN_KEYWORD:
-                strcat(out, "printf");
+            case TOKEN_ID:
+                strcat(out, tokens[i].value);
+                break;
+            case 0:
+                strcat(out, "char* ");
+                break;
+            case TOKEN_PRINT:
+                #ifdef _WIN64
+                    strcat(out, "puts");
+                #elif __linux__
+                    strcat(out, "echo");
+                #endif
                 break;
             case TOKEN_OPARAN:
                 strcat(out, "(");
@@ -123,10 +159,14 @@ void process()
                 strcat(out, ")");
                 break;
             case TOKEN_STRING:
-                str_builder(tokens[i].value, out);
+                strcat(out, tokens[i].value);
+                //str_builder(tokens[i].value, out);
                 break;
             case TOKEN_SEMICOLON:
-                strcat(out, ";");
+                strcat(out, ";\n");
+                break;
+            case TOKEN_EQUALS:
+                strcat(out, "=");
                 break;
         }
     }
@@ -138,6 +178,8 @@ int main(int argc, char const *argv[])
 {
     //if (argc < 2){printf("Deposit a file to compile!\n"); return 1;}
     //argv[1]
+    keywords[1] = "print";
+    keywords[0] = "chaa";
 
     file = fopen("test.rpt", "r");
     if (!file) {printf("File could not found\n"); return 1;}
@@ -146,7 +188,7 @@ int main(int argc, char const *argv[])
     bytes = ftell(file);
     fseek(file, 0 , SEEK_SET);
 
-    printf("%d\n", fread(buf, sizeof(char), bytes, file));
+    printf("Number of characters: %d\n", fread(buf, sizeof(char), bytes, file));
     printf("%s\n", buf);
 
     for(_index = 0; _index < bytes; _index++)
@@ -159,8 +201,10 @@ int main(int argc, char const *argv[])
     {
         printf("Tokens: %s\n", tokens[l].value);
     }
-    printf("%d\n", tokenCursor);
     process();
+
+    chaa testing;
+    string_init(&testing, "Hello World!");
 
     return 0;
 }
