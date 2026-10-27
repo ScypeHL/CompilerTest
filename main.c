@@ -6,6 +6,8 @@ int bytes;
 char buf[1024000];
 int _index = 0;
 
+int processIndex;
+
 char out[1024000];
 
 #define KEYWORD_COUNT 2
@@ -13,20 +15,17 @@ char* keywords[KEYWORD_COUNT];
 
 typedef enum
 {
-    TOKEN_ID = -1,
-    TOKEN_TYPE_CHAA,
-    TOKEN_PRINT,
-    TOKEN_OPARAN,
-    TOKEN_CPARAN,
-    TOKEN_STRING,
-    TOKEN_SEMICOLON,
-    TOKEN_EQUALS
-}Token_Type;
+    ID_CHAR,
+    ID_INT
+}IdentifierType;
 
 typedef struct
 {
-    Token_Type type;
+    TokenType type;
+    IdentifierType itype;
+
     char value[1024];
+    void* data;
 }Token;
 
 Token tokens[1024];
@@ -53,13 +52,11 @@ void tokenize(char ch)
               for(; '"' != buf[_index]; _index++)
               {
                   tokenBuf[tokenBufCursor] = buf[_index];
-                  printf("Characters %c\n", buf[_index]);
                   tokenBufCursor++;
               }
               tokenBuf[tokenBufCursor] = 34;
               tokenBufCursor++;
               //strcpy(tokens[tokenCursor].value, tokenBuf);
-              printf("Length: %d\n", tokenBufCursor);
               memcpy(tokens[tokenCursor].value, tokenBuf, sizeof(char) * (tokenBufCursor));
               tokens[tokenCursor].type = TOKEN_STRING;
               tokenBufCursor = 0;
@@ -78,11 +75,14 @@ void tokenize(char ch)
               {
                   if(!strcmp(keywords[i], tokenBuf))
                   {
-                    tokens[tokenCursor].type = i;
-                    break;
-                  }else{tokens[tokenCursor].type = TOKEN_ID;}
+                      tokens[tokenCursor].type = i;
+                      break;
+                  }
+                  else
+                  {
+                      tokens[tokenCursor].type = TOKEN_ID;
+                  }
               }
-              printf("Length: %d\n", tokenBufCursor);
               memcpy(tokens[tokenCursor].value, tokenBuf, sizeof(char) * (tokenBufCursor));
               //strcpy(tokens[tokenCursor].value, tokenBuf);
               tokenBufCursor = 0;
@@ -130,24 +130,59 @@ void str_builder(char* src, char* dst)
     strcat(dst, temp);
 }
 
-void process()
+void start_print()
+{
+    if(expect_next(TOKEN_OPARAN))
+    {
+        processIndex++;
+        strcat(out, "(");
+        processIndex++;
+        switch(tokens[processIndex].type)
+        {
+            case TOKEN_STRING:
+                printf("String: %s\n",(char*)tokens[processIndex].data);
+                strcat(out, tokens[processIndex].value);
+                break;
+            case TOKEN_ID:
+                printf("%d\n",(int)tokens[processIndex].data);
+                strcat(out, tokens[processIndex].value);
+                break;
+            default:
+                printf("leaked out | type was:%d\n", tokens[processIndex].type);
+                break;
+        }
+    }
+}
+
+int process()
 {
     outFile = fopen("out.c", "w");
-    strcat(out,"#include <stdio.h>\nint main(){");
+    strcat(out,"#include <stdio.h>\nint main(){\n");
 
-    for(int i = 0; i < tokenCursor; i++)
+    for(processIndex = 0; processIndex < tokenCursor; processIndex++)
     {
-        switch(tokens[i].type)
+        switch(tokens[processIndex].type)
         {
             case TOKEN_ID:
-                strcat(out, tokens[i].value);
+                printf("Was Here as %s\n", tokens[processIndex].value);
+                strcat(out, tokens[processIndex].value);
                 break;
-            case 0:
+            case TOKEN_TYPE_CHAA:
                 strcat(out, "char* ");
+                if(!expect_next(TOKEN_ID)){printf("problem in process chaa\n"); break;}
+                tokens[processIndex + 1].type = TOKEN_TYPE_CHAA;
+                processIndex++;
+                break;
+            case TOKEN_TYPE_INT:
+                strcat(out, "int ");
+                if(!expect_next(TOKEN_ID)){printf("problem in process int\n"); break;}
+                tokens[processIndex + 1].type = TOKEN_TYPE_INT;
+                processIndex++;
                 break;
             case TOKEN_PRINT:
                 #ifdef _WIN64
                     strcat(out, "puts");
+                    start_print();
                 #elif __linux__
                     strcat(out, "echo");
                 #endif
@@ -159,7 +194,7 @@ void process()
                 strcat(out, ")");
                 break;
             case TOKEN_STRING:
-                strcat(out, tokens[i].value);
+                strcat(out, tokens[processIndex].value);
                 //str_builder(tokens[i].value, out);
                 break;
             case TOKEN_SEMICOLON:
@@ -167,9 +202,19 @@ void process()
                 break;
             case TOKEN_EQUALS:
                 strcat(out, "=");
+                switch(tokens[processIndex - 1].type)
+                {
+                    case TOKEN_TYPE_INT:
+                    tokens[processIndex - 1].data = (tokens[processIndex + 1].value);
+                        break;
+                    case TOKEN_TYPE_CHAA:
+                        tokens[processIndex - 1].data = (char*)(tokens[processIndex + 1].value);
+                        break;
+                }
+                //processIndex++;
                 break;
+            }
         }
-    }
     strcat(out," return 0;}");
     fprintf(outFile, "%s\n", out);
 }
@@ -178,8 +223,9 @@ int main(int argc, char const *argv[])
 {
     //if (argc < 2){printf("Deposit a file to compile!\n"); return 1;}
     //argv[1]
-    keywords[1] = "print";
-    keywords[0] = "chaa";
+    keywords[0] = "print";
+    keywords[1] = "chaa";
+    keywords[2] = "int";
 
     file = fopen("test.rpt", "r");
     if (!file) {printf("File could not found\n"); return 1;}
@@ -188,7 +234,7 @@ int main(int argc, char const *argv[])
     bytes = ftell(file);
     fseek(file, 0 , SEEK_SET);
 
-    printf("Number of characters: %d\n", fread(buf, sizeof(char), bytes, file));
+    printf("Number of characters: %lld\n", fread(buf, sizeof(char), bytes, file));
     printf("%s\n", buf);
 
     for(_index = 0; _index < bytes; _index++)
@@ -201,10 +247,16 @@ int main(int argc, char const *argv[])
     {
         printf("Tokens: %s\n", tokens[l].value);
     }
-    process();
+    if(process()){exit(31);}
 
     chaa testing;
     string_init(&testing, "Hello World!");
 
     return 0;
+}
+
+int expect_next(TokenType type)
+{
+    if(tokens[processIndex + 1].type == type) return 1;
+    else return 0;
 }

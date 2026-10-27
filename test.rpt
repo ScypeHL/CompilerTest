@@ -3,8 +3,12 @@
 chaa identifier;
 chaa text;
 
+int number;
+number = 5;
+
 identifier = "Seri Ola Sir Senor!";
 text = "This is my program!";
 
+print("Hello World!");
 print(text);
 print(identifier);
