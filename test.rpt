@@ -3,8 +3,8 @@
 chaa identifier;
 chaa text;
 
-int number;
-number = 5;
+int number1 = 50;
+int number2 = 27;
 
 identifier = "Seri Ola Sir Senor!";
 text = "This is my program!";
@@ -12,3 +12,5 @@ text = "This is my program!";
 print("Hello World!");
 print(text);
 print(identifier);
+print(number1 + number2);
+print(7 + 13);
